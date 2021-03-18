@@ -4,6 +4,7 @@
 
 import '../exception.dart';
 import '../utils.dart';
+import 'extender.dart';
 import 'extension.dart';
 
 /// An [Extension] created by merging two [Extension]s with the same extender
@@ -26,13 +27,14 @@ class MergedExtension extends Extension {
   /// Throws an [ArgumentError] if [left] and [right] don't have the same
   /// extender and target.
   static Extension merge(Extension left, Extension right) {
-    if (left.extender != right.extender || left.target != right.target) {
+    if (left.extender.selector != right.extender.selector ||
+        left.target != right.target) {
       throw ArgumentError("$left and $right aren't the same extension.");
     }
 
-    if (left.mediaContext != null &&
-        right.mediaContext != null &&
-        !listEquals(left.mediaContext, right.mediaContext)) {
+    if (left.extender.mediaContext != null &&
+        right.extender.mediaContext != null &&
+        !listEquals(left.extender.mediaContext, right.extender.mediaContext)) {
       throw SassException(
           "From ${left.span!.message('')}\n"
           "You may not @extend the same selector from within different media "
@@ -42,27 +44,36 @@ class MergedExtension extends Extension {
 
     // If one extension is optional and doesn't add a special media context, it
     // doesn't need to be merged.
-    if (right.isOptional && right.mediaContext == null) return left;
-    if (left.isOptional && left.mediaContext == null) return right;
+    if (right.isOptional && right.extender.mediaContext == null) return left;
+    if (left.isOptional && left.extender.mediaContext == null) return right;
 
     return MergedExtension._(left, right);
   }
 
   MergedExtension._(this.left, this.right)
-      : super(left.extender, left.target, left.extenderSpan, left.span,
-            left.mediaContext ?? right.mediaContext,
-            specificity: left.specificity, optional: true);
+      : super(
+            Extender(left.extender.selector, left.extender.span,
+                mediaContext:
+                    left.extender.mediaContext ?? right.extender.mediaContext,
+                specificity: left.extender.specificity,
+                original:
+                    left.extender.isOriginal && right.extender.isOriginal),
+            left.target,
+            left.span,
+            optional: true);
 
-  /// Returns all leaf-node [Extension]s in the tree or [MergedExtension]s.
+  /// Returns all leaf-node [Extension]s in the tree of [MergedExtension]s.
   Iterable<Extension> unmerge() sync* {
+    var left = this.left;
     if (left is MergedExtension) {
-      yield* (left as MergedExtension).unmerge();
+      yield* left.unmerge();
     } else {
       yield left;
     }
 
+    var right = this.right;
     if (right is MergedExtension) {
-      yield* (right as MergedExtension).unmerge();
+      yield* right.unmerge();
     } else {
       yield right;
     }
