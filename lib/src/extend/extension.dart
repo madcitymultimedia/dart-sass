@@ -25,7 +25,7 @@ class Extension {
   ///
   /// If any extend rule for this is extension is mandatory, this is guaranteed
   /// to be a span for a mandatory rule.
-  final FileSpan? span;
+  final FileSpan span;
 
   /// Creates a new extension.
   ///

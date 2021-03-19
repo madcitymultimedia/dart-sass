@@ -12,13 +12,20 @@ class ConfiguredValue {
   /// The value of the variable.
   final Value value;
 
-  /// The span where the variable's configuration was written.
-  final FileSpan? configurationSpan;
-
   /// The [AstNode] where the variable's value originated.
   ///
   /// This is used to generate source maps.
   final AstNode? assignmentNode;
 
-  ConfiguredValue(this.value, this.configurationSpan, this.assignmentNode);
+  ConfiguredValue(this.value, this.assignmentNode);
+}
+
+/// A variable value that's been explicitly configured for a [Configuration].
+class ExplicitConfiguredValue extends ConfiguredValue {
+  /// The span where the variable's configuration was written.
+  final FileSpan configurationSpan;
+
+  ExplicitConfiguredValue(
+      Value value, this.configurationSpan, AstNode? assignmentNode)
+      : super(value, assignmentNode);
 }

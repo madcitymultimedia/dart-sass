@@ -18,18 +18,13 @@ import 'util/unprefixed_map_view.dart';
 /// meaning that it's created by passing a `with` clause to a `@use` rule.
 /// Explicit configurations have spans associated with them and are represented
 /// by the [ExplicitConfiguration] subclass.
-class Configuration {
+class Configuration<V extends ConfiguredValue> {
   /// A map from variable names (without `$`) to values.
   ///
   /// This map may not be modified directly. To remove a value from this
   /// configuration, use the [remove] method.
-  Map<String, ConfiguredValue> get values => UnmodifiableMapView(_values);
-  final Map<String, ConfiguredValue> _values;
-
-  /// Creates an explicit configuration with the given [values].
-  factory Configuration(
-          Map<String, ConfiguredValue> values, AstNode nodeWithSpan) =
-      ExplicitConfiguration._;
+  Map<String, V> get values => UnmodifiableMapView(_values);
+  final Map<String, V> _values;
 
   /// Creates an implicit configuration with the given [values].
   Configuration.implicit(this._values);
@@ -46,7 +41,7 @@ class Configuration {
   /// Removes a variable with [name] from this configuration, returning it.
   ///
   /// If no such variable exists in this configuration, returns null.
-  ConfiguredValue? remove(String name) => isEmpty ? null : _values.remove(name);
+  V? remove(String name) => isEmpty ? null : _values.remove(name);
 
   /// Creates a new configuration from this one based on a `@forward` rule.
   Configuration throughForward(ForwardRule forward) {
@@ -71,28 +66,26 @@ class Configuration {
   }
 
   /// Returns a copy of [this] with the given [values] map.
-  Configuration _withValues(Map<String, ConfiguredValue> values) =>
+  Configuration _withValues(Map<String, V> values) =>
       Configuration.implicit(values);
 }
 
 /// A [Configuratoin] that was created with an explicit `with` clause of a
 /// `@use` rule.
 ///
-/// This is as opposed to *implicit* configurations, which are
-///
 /// Both types of configuration pass through `@forward` rules, but explicit
 /// configurations will cause an error if attempting to use them on a module
 /// that has already been loaded, while implicit configurations will be
 /// silently ignored in this case.
-class ExplicitConfiguration extends Configuration {
+class ExplicitConfiguration extends Configuration<ExplicitConfiguredValue> {
   /// The node whose span indicates where the configuration was declared.
   final AstNode nodeWithSpan;
 
-  ExplicitConfiguration._(
-      Map<String, ConfiguredValue> values, this.nodeWithSpan)
+  ExplicitConfiguration(
+      Map<String, ExplicitConfiguredValue> values, this.nodeWithSpan)
       : super.implicit(values);
 
   /// Returns a copy of [this] with the given [values] map.
-  Configuration _withValues(Map<String, ConfiguredValue> values) =>
-      Configuration(values, nodeWithSpan);
+  Configuration _withValues(Map<String, ExplicitConfiguredValue> values) =>
+      ExplicitConfiguration(values, nodeWithSpan);
 }

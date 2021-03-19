@@ -28,7 +28,7 @@ class Extender {
   final List<CssMediaQuery>? mediaContext;
 
   /// The span in which this selector was defined.
-  final FileSpan? span;
+  final FileSpan span;
 
   /// Creates a new extender.
   ///
