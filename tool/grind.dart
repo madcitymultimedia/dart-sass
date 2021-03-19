@@ -28,9 +28,9 @@ void main(List<String> args) {
   pkg.homebrewFormula.value = "sass.rb";
   pkg.jsRequires.value = {"chokidar": "chokidar", "readline": "readline"};
   pkg.jsModuleMainLibrary.value = "lib/src/node.dart";
-  pkg.npmPackageJson.fn = () =>
-      json.decode(File("package/package.json").readAsStringSync())
-          as Map<String, Object>;
+  pkg.npmPackageJson.fn = () => json
+      .decode(File("package/package.json").readAsStringSync())
+      .cast<String, Object>();
   pkg.npmReadme.fn = () => _readAndResolveMarkdown("package/README.npm.md");
   pkg.standaloneName.value = "dart-sass";
   pkg.githubUser.fn = () => Platform.environment["GH_USER"]!;
