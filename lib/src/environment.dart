@@ -5,7 +5,7 @@
 // DO NOT EDIT. This file was generated from async_environment.dart.
 // See tool/grind/synchronize.dart for details.
 //
-// Checksum: e4338d1919a5479c9e341b679330248f48baf68f
+// Checksum: df2267d4483754aea058d90e2eb52809ba404be4
 //
 // ignore_for_file: unused_import
 
@@ -960,7 +960,7 @@ class _EnvironmentModule implements Module<Callable> {
             forwarded.map((module) => module.variables)),
         environment._variableNodes.andThen((nodes) => _memberMap(
             nodes.first,
-            // `forwarded!` due to dart-lang/sdk#45348
+            // dart-lang/sdk#45348
             forwarded!.map((module) => module.variableNodes!))),
         _memberMap(environment._functions.first,
             forwarded.map((module) => module.functions)),

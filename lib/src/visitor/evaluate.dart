@@ -5,7 +5,7 @@
 // DO NOT EDIT. This file was generated from async_evaluate.dart.
 // See tool/grind/synchronize.dart for details.
 //
-// Checksum: 8e4cd05e749bd6fd0137da571818df85dfb5d683
+// Checksum: 95e0a118d12b541b8efb8568630aa56b058d22c2
 //
 // ignore_for_file: unused_import
 
@@ -901,7 +901,14 @@ class _EvaluateVisitor
     var included = <ModifiableCssParentNode>[];
     while (parent is! CssStylesheet) {
       if (!query.excludes(parent)) included.add(parent);
-      parent = parent.parent!;
+
+      var grandparent = parent.parent;
+      if (grandparent == null) {
+        throw StateError(
+            "CssNodes must have a CssStylesheet transitive parent node.");
+      }
+
+      parent = grandparent;
     }
     var root = _trimIncluded(included);
 
@@ -956,10 +963,22 @@ class _EvaluateVisitor
     for (var i = 0; i < nodes.length; i++) {
       while (parent != nodes[i]) {
         innermostContiguous = null;
-        parent = parent.parent!;
+
+        var grandparent = parent.parent;
+        if (grandparent == null) {
+          throw ArgumentError(
+              "Expected ${nodes[i]} to be an ancestor of $this.");
+        }
+
+        parent = grandparent;
       }
       innermostContiguous ??= i;
-      parent = parent.parent!;
+
+      var grandparent = parent.parent;
+      if (grandparent == null) {
+        throw ArgumentError("Expected ${nodes[i]} to be an ancestor of $this.");
+      }
+      parent = grandparent;
     }
 
     if (parent != _root) return _root;
@@ -1069,7 +1088,7 @@ class _EvaluateVisitor
       _parent.addChild(ModifiableCssDeclaration(name, cssValue, node.span,
           parsedAsCustomProperty: node.isCustomProperty,
           valueSpanForMap:
-              _sourceMap ? null : _expressionNode(node.value!).span));
+              _sourceMap ? null : node.value.andThen(_expressionNode)?.span));
     } else if (name.value.startsWith('--') && cssValue != null) {
       throw _exception(
           "Custom property values may not be empty.", cssValue.span);
@@ -1182,9 +1201,10 @@ class _EvaluateVisitor
     var name = _interpolationToValue(node.name);
 
     var value = node.value.andThen((value) =>
-        _interpolationToValue(value, trim: true, warnForColor: true))!;
+        _interpolationToValue(value, trim: true, warnForColor: true));
 
-    if (node.children == null) {
+    var children = node.children;
+    if (children == null) {
       _parent.addChild(
           ModifiableCssAtRule(name, node.span, childless: true, value: value));
       return null;
@@ -1201,7 +1221,7 @@ class _EvaluateVisitor
     _withParent(ModifiableCssAtRule(name, node.span, value: value), () {
       var styleRule = _styleRule;
       if (styleRule == null || _inKeyframes) {
-        for (var child in node.children!) {
+        for (var child in children) {
           child.accept(this);
         }
       } else {
@@ -1210,7 +1230,7 @@ class _EvaluateVisitor
         //
         // For example, "a {@foo {b: c}}" should produce "@foo {a {b: c}}".
         _withParent(styleRule.copyWithoutChildren(), () {
-          for (var child in node.children!) {
+          for (var child in children) {
             child.accept(this);
           }
         }, scopeWhen: false);
@@ -1549,12 +1569,15 @@ class _EvaluateVisitor
     // here should be mirrored there.
 
     var url = _interpolationToValue(import.url);
-    var supports = import.supports.andThen((supports) => CssValue(
-        "supports(${supports is SupportsDeclaration ? "${_evaluateToCss(supports.name)}: "
-            "${_evaluateToCss(supports.value)}" : supports.andThen(_visitSupportsCondition)})",
-        supports.span))!;
+    var supports = import.supports.andThen((supports) {
+      var arg = supports is SupportsDeclaration
+          ? "${_evaluateToCss(supports.name)}: "
+              "${_evaluateToCss(supports.value)}"
+          : supports.andThen(_visitSupportsCondition);
+      return CssValue("supports($arg)", supports.span);
+    });
     var rawMedia = import.media;
-    var mediaQuery = rawMedia.andThen(_visitMediaQueries)!;
+    var mediaQuery = rawMedia.andThen(_visitMediaQueries);
 
     var node = ModifiableCssImport(url, import.span,
         supports: supports, media: mediaQuery);
@@ -2246,10 +2269,11 @@ class _EvaluateVisitor
         buffer.write(_evaluateToCss(argument));
       }
 
-      var rest = arguments.rest?.accept(this);
-      if (rest != null) {
+      var restArg = arguments.rest;
+      if (restArg != null) {
+        var rest = restArg.accept(this);
         if (!first) buffer.write(", ");
-        buffer.write(_serialize(rest, arguments.rest!));
+        buffer.write(_serialize(rest, restArg));
       }
       buffer.writeCharCode($rparen);
 
@@ -2867,13 +2891,19 @@ class _EvaluateVisitor
     var parent = _parent;
     if (through != null) {
       while (through(parent)) {
-        parent = parent.parent!;
+        var grandparent = parent.parent;
+        if (grandparent == null) {
+          throw ArgumentError(
+              "through() must return false for at least one parent of $node.");
+        }
+        parent = grandparent;
       }
 
       // If the parent has a (visible) following sibling, we shouldn't add to
       // the parent. Instead, we should create a copy and add it after the
       // interstitial sibling.
       if (parent.hasFollowingSibling) {
+        // A node with siblings must have a parent
         var grandparent = parent.parent!;
         parent = parent.copyWithoutChildren();
         grandparent.addChild(parent);
