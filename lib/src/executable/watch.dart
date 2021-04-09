@@ -4,6 +4,7 @@
 
 import 'dart:collection';
 
+import 'package:async/async.dart';
 import 'package:path/path.dart' as p;
 import 'package:stack_trace/stack_trace.dart';
 import 'package:stream_transform/stream_transform.dart';
@@ -14,6 +15,7 @@ import '../importer/filesystem.dart';
 import '../io.dart';
 import '../stylesheet_graph.dart';
 import '../util/multi_dir_watcher.dart';
+import '../utils.dart';
 import 'compile_stylesheet.dart';
 import 'options.dart';
 
@@ -123,30 +125,33 @@ class _Watcher {
   /// Listens to `watcher.events` and updates the filesystem accordingly.
   ///
   /// Returns a future that will only complete if an unexpected error occurs.
-  Future<void> watch(MultiDirWatcher watcher) async {
-    await for (var event in _debounceEvents(watcher.events)) {
+  Future<void> watch(MultiDirWatcher watcher) {
+    late CancelableOperation<void> operation;
+    operation =
+        _debounceEvents(watcher.events).forEachCancelable((event) async {
       var extension = p.extension(event.path);
       if (extension != '.sass' && extension != '.scss' && extension != '.css') {
-        continue;
+        return;
       }
 
       switch (event.type) {
         case ChangeType.MODIFY:
           var success = await _handleModify(event.path);
-          if (!success && _options.stopOnError) return;
+          if (!success && _options.stopOnError) operation.cancel();
           break;
 
         case ChangeType.ADD:
           var success = await _handleAdd(event.path);
-          if (!success && _options.stopOnError) return;
+          if (!success && _options.stopOnError) operation.cancel();
           break;
 
         case ChangeType.REMOVE:
           var success = await _handleRemove(event.path);
-          if (!success && _options.stopOnError) return;
+          if (!success && _options.stopOnError) operation.cancel();
           break;
       }
-    }
+    });
+    return operation.valueOrCancellation();
   }
 
   /// Handles a modify event for the stylesheet at [path].

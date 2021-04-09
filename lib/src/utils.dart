@@ -2,8 +2,10 @@
 // MIT-style license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:async/async.dart';
 import 'package:charcode/charcode.dart';
 import 'package:collection/collection.dart';
 import 'package:source_span/source_span.dart';
@@ -401,5 +403,31 @@ extension SpanExtensions on FileSpan {
     return start == 0 && end == text.length - 1
         ? this
         : file.span(this.start.offset + start, this.start.offset + end + 1);
+  }
+}
+
+extension StreamExtension<T> on Stream<T> {
+  /// Like [Stream.forEach], but returns a [CancelableOperation] that cancels
+  /// the underlying stream subscription once it's cancelled.
+  ///
+  /// This also fixed dart-lang/sdk#45645.
+  CancelableOperation<void> forEachCancelable(
+      FutureOr<void> callback(T element)) {
+    var subscription = listen(null);
+    var completer = CancelableCompleter<void>(onCancel: subscription.cancel);
+    subscription.onData((event) async {
+      subscription.pause();
+      try {
+        await callback(event);
+        subscription.resume();
+      } catch (error, stackTrace) {
+        subscription.cancel();
+        completer.completeError(error, stackTrace);
+      }
+    });
+    subscription.onError(completer.completeError);
+    subscription.onDone(completer.complete);
+
+    return completer.operation;
   }
 }

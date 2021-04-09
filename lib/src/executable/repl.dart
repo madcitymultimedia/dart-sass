@@ -14,6 +14,7 @@ import '../import_cache.dart';
 import '../importer/filesystem.dart';
 import '../logger/tracking.dart';
 import '../parse/parser.dart';
+import '../utils.dart';
 import '../visitor/evaluate.dart';
 
 /// Runs an interactive SassScript shell according to [options].
@@ -24,12 +25,14 @@ Future<void> repl(ExecutableOptions options) async {
       importer: FilesystemImporter('.'),
       importCache: ImportCache(loadPaths: options.loadPaths, logger: logger),
       logger: logger);
-  await for (String line in repl.runAsync()) {
-    if (line.trim().isEmpty) continue;
+
+  // Use forEachCancelable to work around dart-lang/sdk#45645.
+  await repl.runAsync().forEachCancelable((line) {
+    if (line.trim().isEmpty) return;
     try {
       if (line.startsWith("@")) {
         evaluator.use(UseRule.parse(line, logger: logger));
-        continue;
+        return;
       }
 
       if (Parser.isVariableDeclarationLike(line)) {
@@ -44,7 +47,7 @@ Future<void> repl(ExecutableOptions options) async {
     } on SassException catch (error, stackTrace) {
       _logError(error, stackTrace, line, repl, options, logger);
     }
-  }
+  }).value;
 }
 
 /// Logs an error from the interactive shell.
