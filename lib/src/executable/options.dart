@@ -150,7 +150,7 @@ class ExecutableOptions {
   ///
   /// This may be `null`, indicating that this should be determined by each
   /// stylesheet's extension.
-  bool get indented => _ifParsed('indented') as bool;
+  bool? get indented => _ifParsed('indented') as bool?;
 
   /// Whether to use ANSI terminal colors.
   bool get color => _options.wasParsed('color')
